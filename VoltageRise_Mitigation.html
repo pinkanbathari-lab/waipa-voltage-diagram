@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Voltage Rise &amp; Mitigation — Waipā Solar Farm</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #0A2342;
+    --yellow:  #F5C518;
+    --yellow2: #EF9F27;
+    --blue:    #185FA5;
+    --blue2:   #378ADD;
+    --green:   #1D9E75;
+    --red:     #E24B4A;
+    --red2:    #FCEBEB;
+    --gray:    #5F5E5A;
+    --gray2:   #D3D1C7;
+    --bg:      #F4F7FB;
+    --white:   #FFFFFF;
+    --text:    #0A2342;
+  }
+
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--navy);
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .header-badge {
+    background: var(--yellow);
+    color: var(--navy);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 3px;
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: -0.01em;
+  }
+  header span {
+    font-size: 13px;
+    color: #8090A8;
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* MAIN LAYOUT */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 0;
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 32px 40px;
+    gap: 32px;
+  }
+
+  /* DIAGRAM PANEL */
+  .diagram-panel {
+    background: var(--white);
+    border-radius: 12px;
+    border: 1px solid var(--gray2);
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--gray);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+
+  /* VOLTAGE GAUGE */
+  .gauge-area {
+    display: flex;
+    align-items: flex-start;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .gauge-track {
+    width: 56px;
+    height: 280px;
+    background: var(--bg);
+    border: 1px solid var(--gray2);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Danger zones */
+  .gauge-danger-top {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 14%;
+    background: #FFE0E0;
+    border-bottom: 2px dashed var(--red);
+  }
+  .gauge-danger-bot {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 14%;
+    background: #FFE0E0;
+    border-top: 2px dashed var(--red);
+  }
+  .gauge-nominal {
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    height: 1px;
+    background: var(--gray);
+    opacity: 0.4;
+  }
+
+  .gauge-fill {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: var(--yellow2);
+    opacity: 0.5;
+    transition: height 0.4s ease, background 0.4s ease;
+    border-radius: 0 0 7px 7px;
+  }
+
+  .gauge-needle {
+    position: absolute;
+    left: 0; right: 0;
+    height: 3px;
+    background: var(--yellow2);
+    transition: top 0.4s ease, background 0.4s ease;
+    border-radius: 2px;
+  }
+
+  .gauge-volt-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--navy);
+    transition: color 0.3s;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .gauge-volt-label.over { color: var(--red); }
+
+  .gauge-sub {
+    font-size: 12px;
+    color: var(--gray);
+    text-align: center;
+  }
+
+  /* Limit annotations on gauge side */
+  .gauge-annotations {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 280px;
+    padding: 0;
+  }
+  .ann {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--red);
+    white-space: nowrap;
+  }
+  .ann-nom {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--gray);
+    white-space: nowrap;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 64px;
+  }
+
+  /* FLOW DIAGRAM */
+  .flow-diagram {
+    flex: 1;
+  }
+
+  .flow-diagram svg {
+    width: 100%;
+    height: auto;
+  }
+
+  /* STATUS BANNER */
+  .status-banner {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 20px;
+    transition: background 0.3s, color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+  }
+  .status-banner.ok    { background: #E1F5EE; color: #085041; }
+  .status-banner.warn  { background: var(--red2); color: #791F1F; }
+  .status-ok-dot, .status-warn-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-ok-dot   { background: var(--green); }
+  .status-warn-dot { background: var(--red); animation: blink 0.8s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* CONTROL PANEL */
+  .control-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .ctrl-card {
+    background: var(--white);
+    border-radius: 12px;
+    border: 1px solid var(--gray2);
+    padding: 24px;
+    transition: border-color 0.3s;
+  }
+  .ctrl-card.active-q    { border-color: var(--green); }
+  .ctrl-card.active-oltc { border-color: var(--blue2); }
+
+  .ctrl-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .ctrl-sub {
+    font-size: 12px;
+    color: var(--gray);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  /* Slider */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .slider-row label {
+    font-size: 12px;
+    color: var(--gray);
+    white-space: nowrap;
+    min-width: 80px;
+  }
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--gray2);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--navy);
+    cursor: pointer;
+    border: 2px solid var(--white);
+    box-shadow: 0 0 0 2px var(--navy);
+  }
+  .slider-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 40px;
+    text-align: right;
+    color: var(--navy);
+  }
+
+  /* Toggle button */
+  .toggle-btn {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1.5px solid var(--gray2);
+    background: var(--white);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+  .toggle-btn:hover { background: var(--bg); }
+  .toggle-btn.on-green {
+    background: #E1F5EE;
+    border-color: var(--green);
+    color: #085041;
+  }
+  .toggle-btn.on-blue {
+    background: #E6F1FB;
+    border-color: var(--blue2);
+    color: #0C447C;
+  }
+  .toggle-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--gray2);
+    color: var(--gray);
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  .on-green .toggle-pill { background: var(--green); color: #fff; }
+  .on-blue  .toggle-pill { background: var(--blue2); color: #fff; }
+
+  /* Effect indicator row */
+  .effect-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--gray);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .effect-row.visible { opacity: 1; }
+  .effect-bar {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--gray2);
+    overflow: hidden;
+  }
+  .effect-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s;
+  }
+  .effect-fill.green { background: var(--green); }
+  .effect-fill.blue  { background: var(--blue2); }
+
+  /* Explainer card */
+  .explainer {
+    background: var(--navy);
+    border-radius: 12px;
+    padding: 24px;
+    color: #fff;
+  }
+  .explainer-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--yellow);
+    margin-bottom: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+  .explainer-item {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #C8D8EC;
+  }
+  .explainer-item-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--yellow);
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+
+  /* Footer */
+  footer {
+    padding: 16px 40px;
+    background: var(--navy);
+    font-size: 12px;
+    color: #5A7090;
+    font-family: 'IBM Plex Mono', monospace;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @keyframes flowAnim { to { stroke-dashoffset: -20; } }
+  .flow-line { stroke-dasharray: 8 4; animation: flowAnim 1s linear infinite; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-badge">INTEGRATION ISSUES</div>
+  <h1>Voltage Behaviour &amp; Power Quality — Waipā Solar Farm</h1>
+  <span>Part B — NZ Power Systems Engineering</span>
+</header>
+
+<main>
+  <!-- LEFT: Diagram -->
+  <div class="diagram-panel">
+    <div class="panel-label">Voltage Rise — Cause &amp; Mitigation</div>
+
+    <div class="gauge-area">
+      <!-- Gauge -->
+      <div class="gauge-wrap">
+        <div class="gauge-track" id="gauge-track">
+          <div class="gauge-danger-top"></div>
+          <div class="gauge-danger-bot"></div>
+          <div class="gauge-nominal"></div>
+          <div class="gauge-fill" id="gauge-fill"></div>
+          <div class="gauge-needle" id="gauge-needle"></div>
+        </div>
+        <div class="gauge-volt-label" id="volt-label">33.0 kV</div>
+        <div class="gauge-sub">33 kV bus</div>
+      </div>
+
+      <!-- Annotations -->
+      <div style="position:relative;height:280px;width:120px;flex-shrink:0;">
+        <div style="position:absolute;top:0;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--red);">+6% = 34.98 kV</div>
+        <div style="position:absolute;top:50%;transform:translateY(-50%);font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--gray);">Nominal 33 kV</div>
+        <div style="position:absolute;bottom:0;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--red);">-6% = 31.02 kV</div>
+      </div>
+
+      <!-- SVG flow diagram -->
+      <div class="flow-diagram">
+        <svg viewBox="0 0 420 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </marker>
+          </defs>
+
+          <!-- Waipa box -->
+          <rect x="4" y="72" width="90" height="56" rx="6" fill="#FAEEDA" stroke="#BA7517" stroke-width="1.2"/>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="500" fill="#412402" x="49" y="94" text-anchor="middle">Waipā</text>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#633806" x="49" y="108" text-anchor="middle">Solar Farm</text>
+          <text font-family="IBM Plex Mono, monospace" font-size="10" fill="#854F0B" x="49" y="120" text-anchor="middle">33 MW</text>
+
+          <!-- Export power arrow -->
+          <line id="svg-export" x1="94" y1="100" x2="150" y2="100" stroke="#BA7517" stroke-width="2.5" marker-end="url(#arr)" class="flow-line"/>
+
+          <!-- 33 kV Bus bar -->
+          <rect x="154" y="40" width="16" height="120" rx="3" fill="#BA7517" opacity="0.9"/>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="10" fill="#412402" x="162" y="33" text-anchor="middle">33 kV</text>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="10" fill="#412402" x="162" y="43" text-anchor="middle">busbar</text>
+
+          <!-- Grid TX box -->
+          <rect x="185" y="72" width="90" height="56" rx="6" fill="#F1EFE8" stroke="#888780" stroke-width="1.2"/>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="500" fill="#2C2C2A" x="230" y="94" text-anchor="middle">Grid TX</text>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="10" fill="#5F5E5A" x="230" y="108" text-anchor="middle">11 / 33 kV</text>
+          <rect id="oltc-badge" x="195" y="116" width="70" height="10" rx="3" fill="#B5D4F4" opacity="0"/>
+          <text id="oltc-badge-txt" font-family="IBM Plex Mono, monospace" font-size="9" fill="#0C447C" x="230" y="124" text-anchor="middle" opacity="0">OLTC active ↓</text>
+          <line x1="170" y1="100" x2="185" y2="100" stroke="#888780" stroke-width="1.5"/>
+
+          <!-- WEL box -->
+          <rect x="310" y="72" width="100" height="56" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="1.2"/>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="500" fill="#3C3489" x="360" y="94" text-anchor="middle">WEL 33 kV</text>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="10" fill="#534AB7" x="360" y="108" text-anchor="middle">network</text>
+          <text font-family="IBM Plex Sans, sans-serif" font-size="10" fill="#534AB7" x="360" y="120" text-anchor="middle">consumers</text>
+          <line x1="275" y1="100" x2="310" y2="100" stroke="#888780" stroke-width="1.5" stroke-dasharray="5 3"/>
+
+          <!-- Q absorption arrow (inverter → bus, upward) -->
+          <line id="q-svg-arrow" x1="80" y1="72" x2="160" y2="46" stroke="#1D9E75" stroke-width="2" marker-end="url(#arr)" opacity="0" stroke-linecap="round"/>
+          <rect id="q-svg-label" x="30" y="28" width="130" height="20" rx="4" fill="#E1F5EE" opacity="0"/>
+          <text id="q-svg-text" font-family="IBM Plex Sans, sans-serif" font-size="10" fill="#085041" x="95" y="41" text-anchor="middle" opacity="0">Q absorption (inverter)</text>
+
+          <!-- Voltage indicator arrow on busbar -->
+          <line id="volt-rise-arrow" x1="162" y1="52" x2="162" y2="42" stroke="#E24B4A" stroke-width="2.5" marker-end="url(#arr)" opacity="0"/>
+          <text id="volt-rise-txt" font-family="IBM Plex Mono, monospace" font-size="10" fill="#E24B4A" x="168" y="38" opacity="0">↑ over limit</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Status banner -->
+    <div class="status-banner ok" id="status-banner">
+      <div class="status-ok-dot" id="status-dot"></div>
+      <span id="status-text">Voltage within statutory ±6% limit — system stable</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: Controls -->
+  <div class="control-panel">
+
+    <!-- Export slider -->
+    <div class="ctrl-card">
+      <div class="ctrl-title">Solar export level</div>
+      <div class="ctrl-sub">Drag to simulate how much power Waipā is exporting. At full export, voltage rises significantly.</div>
+      <div class="slider-row">
+        <label>Export</label>
+        <input type="range" id="export-slider" min="0" max="100" value="70" step="1" oninput="update()"/>
+        <span class="slider-val" id="export-val">70%</span>
+      </div>
+      <div class="slider-row" style="margin-top:10px;">
+        <label>Line resistance</label>
+        <input type="range" id="resist-slider" min="1" max="5" value="2" step="1" oninput="update()"/>
+        <span class="slider-val" id="resist-val">low</span>
+      </div>
+    </div>
+
+    <!-- Q Absorption -->
+    <div class="ctrl-card" id="card-q">
+      <div class="ctrl-title">Mitigation 1 — Q absorption</div>
+      <div class="ctrl-sub">Inverters switch to reactive power absorption mode (Q absorption). Pulls voltage down by reducing the reactive component of export current.</div>
+      <button class="toggle-btn" id="btn-q" onclick="toggleQ()">
+        <span>Inverter Q absorption</span>
+        <span class="toggle-pill" id="pill-q">OFF</span>
+      </button>
+      <div class="effect-row" id="q-effect-row">
+        <span style="white-space:nowrap;color:var(--green);">−1.4 kV effect</span>
+        <div class="effect-bar"><div class="effect-fill green" id="q-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- OLTC -->
+    <div class="ctrl-card" id="card-oltc">
+      <div class="ctrl-title">Mitigation 2 — OLTC tap changer</div>
+      <div class="ctrl-sub">The on-load tap changer at the grid transformer adjusts its turns ratio automatically to bring bus voltage back within limits.</div>
+      <button class="toggle-btn" id="btn-oltc" onclick="toggleOLTC()">
+        <span>OLTC at grid TX</span>
+        <span class="toggle-pill" id="pill-oltc">OFF</span>
+      </button>
+      <div class="effect-row" id="oltc-effect-row">
+        <span style="white-space:nowrap;color:var(--blue2);">−1.6 kV effect</span>
+        <div class="effect-bar"><div class="effect-fill blue" id="oltc-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- Explainer -->
+    <div class="explainer">
+      <div class="explainer-title">Why this matters</div>
+      <div class="explainer-item"><div class="explainer-item-dot"></div><span>Statutory limit: ±6% of nominal (Electricity Hazards from Trees Regs)</span></div>
+      <div class="explainer-item"><div class="explainer-item-dot"></div><span>Over-voltage damages consumer equipment and triggers relay disconnects</span></div>
+      <div class="explainer-item"><div class="explainer-item-dot"></div><span>WEL requires a harmonic study and voltage management plan pre-connection</span></div>
+      <div class="explainer-item"><div class="explainer-item-dot"></div><span>Both mitigations work together — Q absorption is fast, OLTC is continuous</span></div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <span>Waipā Solar Farm — Voltage Rise &amp; Mitigation / Part B — NZ Power Systems Engineering</span>
+  <span>Lodestone Energy | WEL Networks | Te Awamutu, Waikato</span>
+</footer>
+
+<script>
+let qOn = false, oltcOn = false;
+const resistLabels = ['', 'very low', 'low', 'medium', 'high', 'very high'];
+
+function getVoltage(pct, resist, q, oltc) {
+  const rise = (pct / 100) * (1.8 + resist * 0.6);
+  let v = 33 + rise;
+  if (q)    v -= 1.4;
+  if (oltc) v -= 1.6;
+  return Math.round(v * 10) / 10;
+}
+
+function update() {
+  const pct    = parseInt(document.getElementById('export-slider').value);
+  const resist = parseInt(document.getElementById('resist-slider').value);
+  document.getElementById('export-val').textContent = pct + '%';
+  document.getElementById('resist-val').textContent = resistLabels[resist];
+
+  const v = getVoltage(pct, resist, qOn, oltcOn);
+  const over  = v > 34.98;
+  const under = v < 31.02;
+  const safe  = !over && !under;
+
+  // Voltage label
+  const lbl = document.getElementById('volt-label');
+  lbl.textContent = v.toFixed(1) + ' kV';
+  lbl.className = 'gauge-volt-label' + (over || under ? ' over' : '');
+
+  // Gauge fill & needle (0% = bottom 31.02 kV, 100% = top 34.98 kV, nom 33kV = 50%)
+  const vMin = 31.02, vMax = 34.98;
+  const pctH = Math.min(100, Math.max(0, ((v - vMin) / (vMax - vMin)) * 100));
+  document.getElementById('gauge-fill').style.height   = pctH + '%';
+  document.getElementById('gauge-fill').style.background = over ? '#E24B4A' : (under ? '#185FA5' : '#EF9F27');
+  document.getElementById('gauge-needle').style.top    = (100 - pctH) + '%';
+  document.getElementById('gauge-needle').style.background = over ? '#E24B4A' : (under ? '#185FA5' : '#EF9F27');
+
+  // Status banner
+  const banner = document.getElementById('status-banner');
+  const dot    = document.getElementById('status-dot');
+  const txt    = document.getElementById('status-text');
+  if (over) {
+    banner.className = 'status-banner warn';
+    dot.className = 'status-warn-dot';
+    txt.textContent = '⚠ Over-voltage — exceeds +6% statutory limit (' + v.toFixed(1) + ' kV > 34.98 kV). Enable a mitigation.';
+  } else if (under) {
+    banner.className = 'status-banner warn';
+    dot.className = 'status-warn-dot';
+    txt.textContent = '⚠ Under-voltage — exceeds -6% statutory limit (' + v.toFixed(1) + ' kV < 31.02 kV).';
+  } else {
+    banner.className = 'status-banner ok';
+    dot.className = 'status-ok-dot';
+    txt.textContent = '✓ Voltage within ±6% limit — ' + v.toFixed(1) + ' kV — system stable';
+  }
+
+  // SVG voltage rise arrow
+  document.getElementById('volt-rise-arrow').setAttribute('opacity', over ? '1' : '0');
+  document.getElementById('volt-rise-txt').setAttribute('opacity', over ? '1' : '0');
+
+  // Effect bars
+  if (qOn) {
+    const maxEffect = 1.4;
+    const rawRise = getVoltage(pct, resist, false, false) - 33;
+    const pctEffect = Math.min(100, (1.4 / Math.max(0.1, rawRise + 1.4)) * 100);
+    document.getElementById('q-bar').style.width = pctEffect.toFixed(0) + '%';
+  }
+  if (oltcOn) {
+    const rawRise = getVoltage(pct, resist, qOn, false) - 33;
+    const pctEffect = Math.min(100, (1.6 / Math.max(0.1, rawRise + 1.6)) * 100);
+    document.getElementById('oltc-bar').style.width = pctEffect.toFixed(0) + '%';
+  }
+}
+
+function toggleQ() {
+  qOn = !qOn;
+  const btn  = document.getElementById('btn-q');
+  const pill = document.getElementById('pill-q');
+  const card = document.getElementById('card-q');
+  const row  = document.getElementById('q-effect-row');
+  const qArr = document.getElementById('q-svg-arrow');
+  const qLbl = document.getElementById('q-svg-label');
+  const qTxt = document.getElementById('q-svg-text');
+
+  btn.className  = 'toggle-btn' + (qOn ? ' on-green' : '');
+  pill.textContent = qOn ? 'ON' : 'OFF';
+  card.className = 'ctrl-card' + (qOn ? ' active-q' : '');
+  row.className  = 'effect-row' + (qOn ? ' visible' : '');
+  if (!qOn) document.getElementById('q-bar').style.width = '0%';
+
+  qArr.setAttribute('opacity', qOn ? '1' : '0');
+  qLbl.setAttribute('opacity', qOn ? '0.95' : '0');
+  qTxt.setAttribute('opacity', qOn ? '1' : '0');
+  update();
+}
+
+function toggleOLTC() {
+  oltcOn = !oltcOn;
+  const btn   = document.getElementById('btn-oltc');
+  const pill  = document.getElementById('pill-oltc');
+  const card  = document.getElementById('card-oltc');
+  const row   = document.getElementById('oltc-effect-row');
+  const badge = document.getElementById('oltc-badge');
+  const btxt  = document.getElementById('oltc-badge-txt');
+
+  btn.className  = 'toggle-btn' + (oltcOn ? ' on-blue' : '');
+  pill.textContent = oltcOn ? 'ON' : 'OFF';
+  card.className = 'ctrl-card' + (oltcOn ? ' active-oltc' : '');
+  row.className  = 'effect-row' + (oltcOn ? ' visible' : '');
+  if (!oltcOn) document.getElementById('oltc-bar').style.width = '0%';
+
+  badge.setAttribute('opacity', oltcOn ? '0.9' : '0');
+  btxt.setAttribute('opacity', oltcOn ? '1' : '0');
+  update();
+}
+
+update();
+</script>
+</body>
+</html>
